@@ -7,7 +7,8 @@ import pdb
 from tqdm import tqdm
 import socket
 import timeit
-
+from utils import *
+from torchvision.transforms import ToTensor, ToPILImage
 
 
 class Callback(object):
@@ -19,6 +20,9 @@ class Callback(object):
 		pass
 
 	def on_epoch_end(self,logs):
+		pass
+
+	def on_val_end(self,logs):
 		pass
 
 
@@ -34,16 +38,17 @@ class Tensorboard(Callback):
 		self.writer = SummaryWriter(log_dir=self.dir)
 
 	# Function to log data
-	def on_epoch_end(self,logs):
+	def on_val_end(self,logs):
 		# Logs data at the epoch end - mostly validation results
 		for tag in logs['epoch_tags']:
-			if 'logs' in tag:
-				self.writer.add_scalar(tag,logs['epoch_tags'][tag],logs['epoch'])
+			if 'score' in tag:
+				self.writer.add_scalar('Dice_score',logs['epoch_tags'][tag],logs['epoch'])
 			elif 'image' in tag:
-				for img in logs['epoch_tags'][tag]:
-					self.writer.add_image('Image',img[0],logs['epoch'])
-					self.writer.add_image('Target',img[1],logs['epoch'])
-					self.writer.add_image('Output',img[0],logs['epoch'])
+				imgs = logs['epoch_tags'][tag]
+				for img in imgs:
+					self.writer.add_image('Image',resize2d(img[0]),logs['epoch'])
+					self.writer.add_image('Target',resize2d(img[1]),logs['epoch'])
+					self.writer.add_image('Output',resize2d(img[2]),logs['epoch'])
 			else:
 				pass
 
@@ -53,9 +58,11 @@ class Tensorboard(Callback):
 			if 'logs' in tag:
 				self.writer.add_scalar(tag,logs['batch_tags'][tag],logs['datapt'])
 			elif 'image' in tag:
-				self.writer.add_image('Image',img[0],logs['datapt'])
-				self.writer.add_image('Target',img[1],logs['datapt'])
-				self.writer.add_image('Output',img[0],logs['datapt'])
+				if logs['datapt']%10 == 0:
+					img = logs['batch_tags'][tag]
+					self.writer.add_image('Image',img[0],logs['datapt'])
+					self.writer.add_image('Target',img[1],logs['datapt'])
+					self.writer.add_image('Output',img[2],logs['datapt'])
 			else:
 				pass
 
@@ -79,13 +86,17 @@ class ModelCheckpoint(Callback):
 		# Create a state dictionary for saving
 		self.state_dict = {'epoch': logs['epoch'], 'model_state_dict':self.model.state_dict(), 
 									 'optim_state_dict':self.optimizer.state_dict(), 'score': logs['epoch_tags']['score']}
-
-		if logs['epoch_tags']['score'] > self.best_score:
-			self.best_score=logs['epoch_tags']['score']
-			torch.save(self.state_dict,self.cpt_dir+"/best_score.tar")	
+		
 		# Always save the last model
 		if logs['epoch'] % self.interval == 0:
-			torch.save(self.state_dict,self.cpt_dir+"/{Epoch_%d}.tar".format(logs['epoch']))
+			torch.save(self.state_dict,self.cpt_dir+"/Epoch_{}.tar".format(logs['epoch']))
+
+	def on_val_end(self,logs):
+		if logs['epoch_tags']['score'] > self.best_score:
+			self.best_score=logs['epoch_tags']['score']
+			self.state_dict = {'epoch': logs['epoch'], 'model_state_dict':self.model.state_dict(), 
+									 'optim_state_dict':self.optimizer.state_dict(), 'score': logs['epoch_tags']['score']}
+			torch.save(self.state_dict,self.cpt_dir+"/best_score.tar")
 
 
 
@@ -95,9 +106,9 @@ class Tqdm(Callback):
 	def __init__(self):
 		super(Tqdm,self).__init__()
 
-	def on_epoch_end(self,logs):
+	def on_val_end(self,logs):
 		score = logs['epoch_tags']['score']
-		tqdm.write('Validation_avg_dice_score = {%.3f}',score )
+		tqdm.write('Validation_avg_dice_score = {0:.3f}'.format(score) )
 
 class Scheduler(Callback):
 	""" Class updates the scheduler after each epoch """
@@ -105,7 +116,7 @@ class Scheduler(Callback):
 		super(Scheduler,self).__init__()
 		self.scheduler = scheduler
 
-	def on_epoch_end(self,logs):
+	def on_val_end(self,logs):
 		if self.scheduler.__class__.__name__=="ReduceLROnPlateau":
 			# self.scheduler.step(logs['epoch_tags']['Validation/Accuracy'])
 			self.scheduler.step((1 - ['epoch_tags']['score']))

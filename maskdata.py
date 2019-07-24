@@ -71,10 +71,10 @@ def make_mask_dataset(images):
 
 class TissueDataset(Dataset):
 	"""docstring for TissueDataset"""
-	def __init__(self, data_root_dir,transforms=None, 
+	def __init__(self, root_dir,transforms=None, 
 				 train = True):
 		super(TissueDataset, self).__init__()
-		self.image_root_dir = data_root_dir
+		self.image_root_dir = root_dir
 		self.train = train
 
 		self.images = make_image_dataset(self.image_root_dir)
@@ -95,20 +95,18 @@ class TissueDataset(Dataset):
 				# writer.add_image("Image",t_image)
 				# writer.add_image("Mask",t_mask)
 		if self.train:
-			image, mask, path = self.make_img_gt_pair(index)
+			image, mask = self.make_img_gt_pair(index)
 			image = Image.fromarray(image)
 			mask  = Image.fromarray(mask)
 			if self.transforms is not None:
-				image = self.transforms(image)
-				mask  = self.transforms(mask)
+				image,mask = self.transforms(image,mask,train =True)
 			return image, mask
 		else:
-			image,mask,path = self.make_img_gt_pair(index)
+			image,mask = self.make_img_gt_pair(index)
 			image = Image.fromarray(image)
 			mask = Image.fromarray(mask)
 			if self.transforms is not None:
-				image  = self.transforms(image)
-				mask  = self.transforms(mask)
+				image,mask = self.transforms(image,mask,train = False)
 			return image, mask
 		
 	def __len__(self):
@@ -159,6 +157,8 @@ class TissueDataset(Dataset):
 				
 				patch_image = image[p_x: p_x + p_h , p_y : p_y + p_w]
 				patch_mask  = mask[p_x: p_x + p_h , p_y : p_y + p_w]
+
+				break
 
 			return patch_image,patch_mask
 		else:

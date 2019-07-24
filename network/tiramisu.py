@@ -75,7 +75,8 @@ class FCDenseNet(nn.Module):
         self.finalConv = nn.Conv2d(in_channels=cur_channels_count,
                out_channels=n_classes, kernel_size=1, stride=1,
                    padding=0, bias=True)
-        self.softmax = nn.LogSoftmax(dim=1)
+        # self.softmax = nn.LogSoftmax(dim=1)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         out = self.firstconv(x)
@@ -93,7 +94,8 @@ class FCDenseNet(nn.Module):
             out = self.denseBlocksUp[i](out)
 
         out = self.finalConv(out)
-        out = self.softmax(out)
+        # out = self.softmax(out)
+        out = self.sigmoid(out)
         return out
 
 
