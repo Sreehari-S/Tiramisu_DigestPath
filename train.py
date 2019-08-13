@@ -28,7 +28,7 @@ import timeit
 
 import shutil
 
-import setproctitle
+# import setproctitle
 import pdb
 from torchvision.transforms import ToTensor, ToPILImage
 
@@ -39,18 +39,18 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--trainbatchSz', type=int, default=4)
 	parser.add_argument('--validbatchSz', type=int, default=1)
-	parser.add_argument('--nEpochs', type=int, default=300)
+	parser.add_argument('--nEpochs', type=int, default=100)
 	parser.add_argument('--no-cuda', action='store_true')
 	# parser.add_argument('--save',help="save folder path",default='/home/bmi/DP/src/densenet.pytorch/save')
-	parser.add_argument('--save',help="save folder path",default='/home/uavws/DP/Tiramisu_DigestPath/checkpoints')
+	parser.add_argument('--save',help="save folder path",default='/home/brats/Sreehari/Tiramisu_DigestPath/checkpoints')
 	# parser.add_argument('--data_root_dir',help="data root dir",default="/home/bmi/DP/tissue-train-pos")
-	parser.add_argument('--train_root_dir',help="data root dir",default="/home/uavws/DP/tissue-train-pos")
-	parser.add_argument('--valid_root_dir',help="data root dir",default="/home/uavws/DP/valid")
+	parser.add_argument('--train_root_dir',help="data root dir",default="/home/brats/Sreehari/tissue-train-pos")
+	parser.add_argument('--valid_root_dir',help="data root dir",default="/home/brats/Sreehari/valid")
 	parser.add_argument('--seed', type=int, default=1)
 	parser.add_argument('--opt', type=str, default='adam',
 						choices=('sgd', 'adam', 'rmsprop'))
 
-	parser.add_argument('--lr',type=float,default= 1e-2)
+	parser.add_argument('--lr',type=float,default= 1e-03)
 	parser.add_argument('--resume_epoch',type=int,default=0)
 	parser.add_argument('--save_epoch',type=int,default=50)
 	parser.add_argument('--network',type=str,default='fcd103')
@@ -62,16 +62,16 @@ def main():
 	args = parser.parse_args()
 
 	args.cuda = not args.no_cuda and torch.cuda.is_available()
-	args.save = args.save or 'work/densenet.base'
-	setproctitle.setproctitle(args.save)
+	# args.save = args.save or 'work/densenet.base'
+	# setproctitle.setproctitle(args.save)
 
 	torch.manual_seed(args.seed)
 	if args.cuda:
 		torch.cuda.manual_seed(args.seed)
 
-	if os.path.exists(args.save):
-		shutil.rmtree(args.save)
-	os.makedirs(args.save, exist_ok=True)
+	# if os.path.exists(args.save):
+	# 	shutil.rmtree(args.save)
+	# os.makedirs(args.save, exist_ok=True)
 
 	normMean = [0.49139968, 0.48215827, 0.44653124]
 	normStd = [0.24703233, 0.24348505, 0.26158768]
@@ -132,10 +132,11 @@ def main():
 	if args.resume_epoch != 0:
 		print('Loading checkpoint from epoch {%d}'.format(args.resume_epoch))
 		state_dict = torch.load(args.save + +"/Epoch_{}.tar".format(args.resume_epoch))
-		net = state_dict['model_state_dict']
-		optimizer = state_dict['optim_state_dict']
+		net.load_state_dict(state_dict['model_state_dict'])
+		optimizer.load_state_dict(state_dict['optim_state_dict'])
 		start_epoch = state_dict['epoch']
 		start_score = state_dict['score']
+		logs['epoch_tags']['score'] = state_dict['score']
 	else:
 		start_epoch = 1
 		start_score = -1.0
@@ -223,7 +224,6 @@ def main():
 			validate(args, epoch, net, validLoader, optimizer,criterion)
 		for callback in callbacks:
 			callback.on_epoch_end(logs)
-		break
 
 if __name__=='__main__':
 	main()

@@ -131,6 +131,8 @@ class TissueDataset(Dataset):
 			mask = cv2.resize(mask, (w, h))
 
 			while(1):
+				pdb.set_trace()
+				random.randint()
 				white = np.where(mask > 0)
 				white_ind = random.randint(0,len(white[0])-1)
 				off_x = random.randint(-256,256)
